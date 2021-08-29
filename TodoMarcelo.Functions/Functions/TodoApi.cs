@@ -15,7 +15,7 @@ using TodoMarcelo.Functions.Entities;
 namespace TodoMarcelo.Functions.Functions
 {
     public static class TodoApi
-    {   
+    {
         /*------------------------------CREACION DE LA FUNCION DE INSERCION O CREACION--------------------*/
         [FunctionName(nameof(CreateTodo))]
         /* ACA INYECTAMOS A LA FUNCION UN HTTP TRIGGER Y UNA TABLA DE LA CLASE CLOUDTABLE*/
@@ -105,7 +105,7 @@ namespace TodoMarcelo.Functions.Functions
 
             }
 
-      //Validacion del campo taskdescription y actualizamos la descripcion y actualizamos a que si se hizo en la propiedad completado
+            //Validacion del campo taskdescription y actualizamos la descripcion y actualizamos a que si se hizo en la propiedad completado
 
             TodoEntity todoEntity = (TodoEntity)findResult.Result;
             todoEntity.IsCompleted = todo.IsCompleted;
@@ -113,7 +113,7 @@ namespace TodoMarcelo.Functions.Functions
             if (!string.IsNullOrEmpty(todo.TaskDescription))
             {
                 todoEntity.TaskDescription = todo.TaskDescription;
-            
+
             }
 
             //DEL NUGGET LLAMAMOS LA CLASE TableOperation PARA INSERTAR EL OBJETO DE LA ENTIDAD
@@ -136,6 +136,128 @@ namespace TodoMarcelo.Functions.Functions
 
             });
         }
+
+        /*-------------------CREACION DE LA FUNCION TRAER TODOS LOS DATOS DE LA "TABLA"-----------------*/
+
+        [FunctionName(nameof(GetAllTodos))]
+        /* ACA INYECTAMOS A LA FUNCION UN HTTP TRIGGER Y UNA TABLA DE LA CLASE CLOUDTABLE*/
+        public static async Task<IActionResult> GetAllTodos(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "todo")] HttpRequest req,
+            [Table("todo", Connection = "AzureWebJobsStorage")] CloudTable todotable,
+            ILogger log)
+        {
+            //LE MANDAMOS UN MENSAJE AL LOG Y CREAMOS EL QUERY POR MEDIO DE UNA TABLA Y LA FILTRAMOS CON LA OTRA TABLA
+            log.LogInformation("Get all todos received.");
+
+            TableQuery<TodoEntity> query = new TableQuery<TodoEntity>();
+            TableQuerySegment<TodoEntity> todos = await todotable.ExecuteQuerySegmentedAsync(query, null);
+
+
+            //SI TODO FUNCIONO CORRECTAMENTE CREAMOS UN MENSAJE DE BIEN HECHO Y LO CARGAMOS AL LOG (CONSOLA)
+            string message = "Retrieved all todos.";
+            log.LogInformation(message);
+
+
+            // RETORNAMOS UNA RESPUESTA POSITIVA CON QUE SI SE CUMPLIO LA EJECUCION, CON EL MENSAJE Y CON LA ENTIDAD CREADA
+            return new OkObjectResult(new Responses
+            {
+                IsSucess = true,
+                Message = message,
+                Result = todos,
+
+
+            });
+        }
+
+
+        /*-------------------CREACION DE LA FUNCION TRAER UN SOLO REGISTRO DE LA "TABLA" -----------------*/
+
+        [FunctionName(nameof(GetTodoById))]
+        /* ACA INYECTAMOS A LA FUNCION UN HTTP TRIGGER Y UN OBJETO DE LA CLASE TodoEntity que ya trae el id que buscamos*/
+        public static IActionResult GetTodoById(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "todo/{id}")] HttpRequest req,
+            [Table("todo", "TODO", "{id}", Connection = "AzureWebJobsStorage")] TodoEntity todoEntity,
+            string id,
+            ILogger log)
+        {
+            //LE MANDAMOS UN MENSAJE AL LOG Y VALIDAMOS SI EL OBJETO todoEntity NO LLEGO NULO
+            log.LogInformation($"Get todo by id:{id}, received.");
+
+            if (todoEntity == null)
+            {
+                return new BadRequestObjectResult(new Responses
+                {
+                    IsSucess = false,
+                    Message = "Todo not found."
+
+                });
+
+            }
+
+
+            //SI TODO FUNCIONO CORRECTAMENTE CREAMOS UN MENSAJE DE BIEN HECHO Y LO CARGAMOS AL LOG (CONSOLA)
+            string message = $"Todo {todoEntity.RowKey} retrieved.";
+            log.LogInformation(message);
+
+
+            // RETORNAMOS UNA RESPUESTA POSITIVA CON QUE SI SE CUMPLIO LA EJECUCION, CON EL MENSAJE Y CON LA ENTIDAD CREADA
+            return new OkObjectResult(new Responses
+            {
+                IsSucess = true,
+                Message = message,
+                Result = todoEntity,
+
+
+            });
+        }
+
+
+
+
+        /*-------------------CREACION DE LA FUNCION BORRAR -----------------*/
+
+        [FunctionName(nameof(DeleteTodo))]
+/* ACA INYECTAMOS A LA FUNCION UN HTTP TRIGGER Y UN OBJETO DE LA CLASE TodoEntity que ya trae el id que buscamos y una tabla con la conexion*/
+        public static async Task <IActionResult> DeleteTodo(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "todo/{id}")] HttpRequest req,
+            [Table("todo", "TODO", "{id}", Connection = "AzureWebJobsStorage")] TodoEntity todoEntity,
+            [Table("todo", Connection = "AzureWebJobsStorage")] CloudTable todotable,
+            string id,
+            ILogger log)
+        {
+            //LE MANDAMOS UN MENSAJE AL LOG Y VALIDAMOS SI EL OBJETO todoEntity NO LLEGO NULO
+            log.LogInformation($"Delete todo :{id}, received.");
+
+            if (todoEntity == null)
+            {
+                return new BadRequestObjectResult(new Responses
+                {
+                    IsSucess = false,
+                    Message = "Todo not found."
+
+                });
+
+            }
+
+
+            //SI TODO FUNCIONO CORRECTAMENTE CREAMOS UN MENSAJE DE BIEN HECHo. EJECUTAMOS EN UN SOLA LINEA EL BORRAR REGISTRO
+            await todotable.ExecuteAsync(TableOperation.Delete(todoEntity));
+            string message = $"Todo {todoEntity.RowKey} deleted.";
+            log.LogInformation(message);
+
+
+            // RETORNAMOS UNA RESPUESTA POSITIVA CON QUE SI SE CUMPLIO LA EJECUCION, CON EL MENSAJE Y CON LA ENTIDAD CREADA
+            return new OkObjectResult(new Responses
+            {
+                IsSucess = true,
+                Message = message,
+                Result = todoEntity,
+
+
+            });
+        }
+
+
 
 
     }

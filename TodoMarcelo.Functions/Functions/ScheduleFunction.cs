@@ -18,7 +18,7 @@ namespace TodoMarcelo.Functions.Functions
             ILogger log)
         {
             /*MANDAMOS EL MENSAJE Y */
-            log.LogInformation($"Delenting completed function executed at: {DateTime.Now}");
+            log.LogInformation($"Deleting completed function executed at: {DateTime.Now}");
 
             string filter = TableQuery.GenerateFilterConditionForBool("IsCompleted", QueryComparisons.Equal, true);
             TableQuery<TodoEntity> query = new TableQuery<TodoEntity>().Where(filter);
